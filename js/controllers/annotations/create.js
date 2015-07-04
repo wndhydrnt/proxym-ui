@@ -1,19 +1,6 @@
-define([
-  "angular",
-  "application"
-], function(
-  angular,
-  proxymApp
-) {
-  'use strict';
+'use strict';
 
-  proxymApp.controller("AnnotationCreateCtrl", [
-    "$scope",
-    function(
-      $scope
-    ) {
-      $scope.annotation = {applicationProtocol: "", config: "", domains: {}, id: ""};
-      $scope.headline = "Create Annotation";
-    }
-  ]);
-});
+module.exports = function($scope) {
+  $scope.annotation = {applicationProtocol: "", config: "", domains: {}, id: ""};
+  $scope.headline = "Create Annotation";
+};
