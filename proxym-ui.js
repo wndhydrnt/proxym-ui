@@ -58,6 +58,8 @@ module.exports = function($scope, $routeParams, proxymApi) {
 };
 
 },{}],4:[function(require,module,exports){
+'use strict';
+
 module.exports = function(proxymApi, $scope) {
   proxymApi.
     listAnnotations().
@@ -128,7 +130,8 @@ module.exports = function(proxymApi) {
     link: link,
     restrict: "AEC",
     scope: {
-      annotation: "=ngModel"
+      annotation: "=ngModel",
+      headline: "=headline"
     },
     templateUrl: "/templates/annotations/partials/annotation_form.html"
   };

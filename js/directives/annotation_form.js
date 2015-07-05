@@ -42,7 +42,8 @@ module.exports = function(proxymApi) {
     link: link,
     restrict: "AEC",
     scope: {
-      annotation: "=ngModel"
+      annotation: "=ngModel",
+      headline: "=headline"
     },
     templateUrl: "/templates/annotations/partials/annotation_form.html"
   };

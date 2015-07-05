@@ -44,7 +44,7 @@
       <div class="form-group" ng-repeat="(index, domain) in annotation.domains">
         <div class="col-md-10 col-md-offset-2">
           <div class="input-group">
-            <input type="text" class="form-control" placeholder="Domain" ng-model="annotation.domains[index]">
+            <input type="text" class="form-control" placeholder="Domain" ng-model="annotation.domains[index]" disabled>
             <a class="btn btn-danger input-group-addon" ng-click="deleteDomain(index)">×</a>
           </div>
         </div>
