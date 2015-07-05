@@ -1,4 +1,7 @@
 {
+  "browser": {
+    "angular-notify": "./bower_components/angular-notify/dist/angular-notify.js"
+  },
   "dependencies": {
     "angular": "^1.4.1",
     "angular-cache": "^4.2.2",
@@ -8,5 +11,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/wndhydrnt/proxym-ui.git"
+  },
+  "scripts": {
+    "postinstall": "bower install"
   }
 }

@@ -2,9 +2,10 @@
 
 var angular = require('angular');
 require('angular-cache');
+require('angular-notify');
 require('angular-route');
 
-var proxymApp = angular.module("proxymApp", ["angular-cache", "ngRoute"]);
+var proxymApp = angular.module("proxymApp", ["angular-cache", "cgNotify", "ngRoute"]);
 
 require('./services');
 require('./directives');

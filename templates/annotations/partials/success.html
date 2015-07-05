@@ -1,0 +1,12 @@
+<div class="alert alert-dismissible cg-notify-message" ng-class="[$classes, 
+    $position === 'center' ? 'cg-notify-message-center' : '',
+    $position === 'left' ? 'cg-notify-message-left' : '',
+    $position === 'right' ? 'cg-notify-message-right' : '']"
+    ng-style="{'margin-left': $centerMargin}" style="width: 600px;">
+  <button type="button" class="close" data-dismiss="alert" aria-label="Close" ng-click="$close()"><span aria-hidden="true">&times;</span></button>
+  <div ng-show="!$messageTemplate">
+    {{$message}}
+  </div>
+  <div ng-show="$messageTemplate" class="cg-notify-message-template">
+  </div>
+</div>

@@ -1,11 +1,198 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+angular.module('cgNotify', []).factory('notify',['$timeout','$http','$compile','$templateCache','$rootScope',
+    function($timeout,$http,$compile,$templateCache,$rootScope){
+
+        var startTop = 10;
+        var verticalSpacing = 15;
+        var defaultDuration = 10000;
+        var defaultTemplateUrl = 'angular-notify.html';
+        var position = 'center';
+        var container = document.body;
+        var maximumOpen = 0;
+
+        var messageElements = [];
+        var openNotificationsScope = [];
+
+        var notify = function(args){
+
+            if (typeof args !== 'object'){
+                args = {message:args};
+            }
+
+            args.duration = args.duration ? args.duration : defaultDuration;
+            args.templateUrl = args.templateUrl ? args.templateUrl : defaultTemplateUrl;
+            args.container = args.container ? args.container : container;
+            args.classes = args.classes ? args.classes : '';
+
+            var scope = args.scope ? args.scope.$new() : $rootScope.$new();
+            scope.$position = args.position ? args.position : position;
+            scope.$message = args.message;
+            scope.$classes = args.classes;
+            scope.$messageTemplate = args.messageTemplate;
+
+            if (maximumOpen > 0) {
+                var numToClose = (openNotificationsScope.length + 1) - maximumOpen;
+                for (var i = 0; i < numToClose; i++) {
+                    openNotificationsScope[i].$close();
+                }
+            }
+
+            $http.get(args.templateUrl,{cache: $templateCache}).success(function(template){
+
+                var templateElement = $compile(template)(scope);
+                templateElement.bind('webkitTransitionEnd oTransitionEnd otransitionend transitionend msTransitionEnd', function(e){
+                    if (e.propertyName === 'opacity' || e.currentTarget.style.opacity === 0 || 
+                        (e.originalEvent && e.originalEvent.propertyName === 'opacity')){
+
+                        templateElement.remove();
+                        messageElements.splice(messageElements.indexOf(templateElement),1);
+                        openNotificationsScope.splice(openNotificationsScope.indexOf(scope),1);
+                        layoutMessages();
+                    }
+                });
+
+                if (args.messageTemplate){
+                    var messageTemplateElement;
+                    for (var i = 0; i < templateElement.children().length; i ++){
+                        if (angular.element(templateElement.children()[i]).hasClass('cg-notify-message-template')){
+                            messageTemplateElement = angular.element(templateElement.children()[i]);
+                            break;
+                        }
+                    }
+                    if (messageTemplateElement){
+                        messageTemplateElement.append($compile(args.messageTemplate)(scope));
+                    } else {
+                        throw new Error('cgNotify could not find the .cg-notify-message-template element in '+args.templateUrl+'.');
+                    }
+                }
+
+                angular.element(args.container).append(templateElement);
+                messageElements.push(templateElement);
+
+                if (scope.$position === 'center'){
+                    $timeout(function(){
+                        scope.$centerMargin = '-' + (templateElement[0].offsetWidth /2) + 'px';
+                    });
+                }
+
+                scope.$close = function(){
+                    templateElement.css('opacity',0).attr('data-closing','true');
+                    layoutMessages();
+                };
+
+                var layoutMessages = function(){
+                    var j = 0;
+                    var currentY = startTop;
+                    for(var i = messageElements.length - 1; i >= 0; i --){
+                        var shadowHeight = 10;
+                        var element = messageElements[i];
+                        var height = element[0].offsetHeight;
+                        var top = currentY + height + shadowHeight;
+                        if (element.attr('data-closing')){
+                            top += 20;
+                        } else {
+                            currentY += height + verticalSpacing;
+                        }
+                        element.css('top',top + 'px').css('margin-top','-' + (height+shadowHeight) + 'px').css('visibility','visible');
+                        j ++;
+                    }
+                };
+
+                $timeout(function(){
+                    layoutMessages();
+                });
+
+                if (args.duration > 0){
+                    $timeout(function(){
+                        scope.$close();
+                    },args.duration);
+                }
+
+            }).error(function(data){
+                    throw new Error('Template specified for cgNotify ('+args.templateUrl+') could not be loaded. ' + data);
+            });
+
+            var retVal = {};
+            
+            retVal.close = function(){
+                if (scope.$close){
+                    scope.$close();
+                }
+            };
+
+            Object.defineProperty(retVal,'message',{
+                get: function(){
+                    return scope.$message;
+                },
+                set: function(val){
+                    scope.$message = val;
+                }
+            });
+
+            openNotificationsScope.push(scope);
+
+            return retVal;
+
+        };
+
+        notify.config = function(args){
+            startTop = !angular.isUndefined(args.startTop) ? args.startTop : startTop;
+            verticalSpacing = !angular.isUndefined(args.verticalSpacing) ? args.verticalSpacing : verticalSpacing;
+            defaultDuration = !angular.isUndefined(args.duration) ? args.duration : defaultDuration;
+            defaultTemplateUrl = args.templateUrl ? args.templateUrl : defaultTemplateUrl;
+            position = !angular.isUndefined(args.position) ? args.position : position;
+            container = args.container ? args.container : container;
+            maximumOpen = args.maximumOpen ? args.maximumOpen : maximumOpen;
+        };
+
+        notify.closeAll = function(){
+            for(var i = messageElements.length - 1; i >= 0; i --){
+                var element = messageElements[i];
+                element.css('opacity',0);
+            }
+        };
+
+        return notify;
+    }
+]);
+
+angular.module('cgNotify').run(['$templateCache', function($templateCache) {
+  'use strict';
+
+  $templateCache.put('angular-notify.html',
+    "<div class=\"cg-notify-message\" ng-class=\"[$classes, \n" +
+    "    $position === 'center' ? 'cg-notify-message-center' : '',\n" +
+    "    $position === 'left' ? 'cg-notify-message-left' : '',\n" +
+    "    $position === 'right' ? 'cg-notify-message-right' : '']\"\n" +
+    "    ng-style=\"{'margin-left': $centerMargin}\">\n" +
+    "\n" +
+    "    <div ng-show=\"!$messageTemplate\">\n" +
+    "        {{$message}}\n" +
+    "    </div>\n" +
+    "\n" +
+    "    <div ng-show=\"$messageTemplate\" class=\"cg-notify-message-template\">\n" +
+    "        \n" +
+    "    </div>\n" +
+    "\n" +
+    "    <button type=\"button\" class=\"cg-notify-close\" ng-click=\"$close()\">\n" +
+    "        <span aria-hidden=\"true\">&times;</span>\n" +
+    "        <span class=\"cg-notify-sr-only\">Close</span>\n" +
+    "    </button>\n" +
+    "\n" +
+    "</div>"
+  );
+
+}]);
+
+},{}],2:[function(require,module,exports){
 'use strict';
 
 var angular = require('angular');
 require('angular-cache');
+require('angular-notify');
 require('angular-route');
 
-var proxymApp = angular.module("proxymApp", ["angular-cache", "ngRoute"]);
+var proxymApp = angular.module("proxymApp", ["angular-cache", "cgNotify", "ngRoute"]);
 
 require('./services');
 require('./directives');
@@ -32,7 +219,7 @@ proxymApp.config(['$routeProvider', '$locationProvider',
   }
 ]);
 
-},{"./controllers":5,"./directives":7,"./services":9,"angular":15,"angular-cache":11,"angular-route":13}],2:[function(require,module,exports){
+},{"./controllers":6,"./directives":8,"./services":10,"angular":16,"angular-cache":12,"angular-notify":1,"angular-route":14}],3:[function(require,module,exports){
 'use strict';
 
 module.exports = function($scope) {
@@ -40,7 +227,7 @@ module.exports = function($scope) {
   $scope.headline = "Create Annotation";
 };
 
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 'use strict';
 
 module.exports = function($scope, $routeParams, proxymApi) {
@@ -57,7 +244,7 @@ module.exports = function($scope, $routeParams, proxymApi) {
     });
 };
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 'use strict';
 
 module.exports = function(proxymApi, $scope) {
@@ -76,7 +263,7 @@ module.exports = function(proxymApi, $scope) {
   }
 };
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 'use strict';
 
 var proxymApp = require('angular').module('proxymApp');
@@ -85,13 +272,12 @@ proxymApp.controller('AnnotationCreateCtrl', require('./annotations/create.js'))
 proxymApp.controller('AnnotationEditCtrl', require('./annotations/edit.js'));
 proxymApp.controller('AnnotationListCtrl', require('./annotations/list.js'));
 
-},{"./annotations/create.js":2,"./annotations/edit.js":3,"./annotations/list.js":4,"angular":15}],6:[function(require,module,exports){
+},{"./annotations/create.js":3,"./annotations/edit.js":4,"./annotations/list.js":5,"angular":16}],7:[function(require,module,exports){
 'use strict';
 
-module.exports = function(proxymApi) {
+module.exports = function(notify, proxymApi) {
   function link(scope, element, attrs) {
     scope.newDomain = "";
-    scope.savedSuccess = false;
 
     scope.addDomain = function() {
       var domainsArray = angular.extend([], scope.annotation.domains);
@@ -99,10 +285,6 @@ module.exports = function(proxymApi) {
       domainsArray.push(scope.newDomain);
       scope.annotation.domains = angular.extend({}, domainsArray);
       scope.newDomain = "";
-    }
-
-    scope.closeSuccess = function() {
-      scope.savedSuccess = false;
     }
 
     scope.deleteDomain = function(idx) {
@@ -121,7 +303,12 @@ module.exports = function(proxymApi) {
       proxymApi.
         createAnnotation(data).
         then(function() {
-          scope.savedSuccess = true;
+          notify({
+            classes: ['alert-success'],
+            duration: 2000,
+            messageTemplate: '<strong>Annotation saved!</strong>',
+            templateUrl: 'templates/annotations/partials/success.html'
+          });
         });
     }
   };
@@ -137,14 +324,14 @@ module.exports = function(proxymApi) {
   };
 };
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 'use strict';
 
 var proxymApp = require('angular').module('proxymApp');
 
 proxymApp.directive('proxymAnnotationForm', require('./annotation_form.js'));
 
-},{"./annotation_form.js":6,"angular":15}],8:[function(require,module,exports){
+},{"./annotation_form.js":7,"angular":16}],9:[function(require,module,exports){
 'use strict';
 
 module.exports = function($window) {
@@ -155,7 +342,7 @@ module.exports = function($window) {
   };
 };
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 'use strict';
 
 var proxymApp = require('angular').module('proxymApp');
@@ -163,7 +350,7 @@ var proxymApp = require('angular').module('proxymApp');
 proxymApp.factory('proxymApi', require('./proxym_api.js'));
 proxymApp.factory('proxymConfig', require('./config.js'));
 
-},{"./config.js":8,"./proxym_api.js":10,"angular":15}],10:[function(require,module,exports){
+},{"./config.js":9,"./proxym_api.js":11,"angular":16}],11:[function(require,module,exports){
 'use strict';
   
 module.exports = function(CacheFactory, proxymConfig, $http, $q) {
@@ -234,7 +421,7 @@ module.exports = function(CacheFactory, proxymConfig, $http, $q) {
   };
 };
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 /*!
  * angular-cache
  * @version 4.2.2 - Homepage <http://jmdobry.github.io/angular-cache/>
@@ -1335,7 +1522,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ ])
 });
 ;
-},{"angular":15}],12:[function(require,module,exports){
+},{"angular":16}],13:[function(require,module,exports){
 /**
  * @license AngularJS v1.4.1
  * (c) 2010-2015 Google, Inc. http://angularjs.org
@@ -2328,11 +2515,11 @@ function ngViewFillContentFactory($compile, $controller, $route) {
 
 })(window, window.angular);
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 require('./angular-route');
 module.exports = 'ngRoute';
 
-},{"./angular-route":12}],14:[function(require,module,exports){
+},{"./angular-route":13}],15:[function(require,module,exports){
 /**
  * @license AngularJS v1.4.1
  * (c) 2010-2015 Google, Inc. http://angularjs.org
@@ -30627,8 +30814,8 @@ var minlengthDirective = function() {
 })(window, document);
 
 !window.angular.$$csp() && window.angular.element(document).find('head').prepend('<style type="text/css">@charset "UTF-8";[ng\\:cloak],[ng-cloak],[data-ng-cloak],[x-ng-cloak],.ng-cloak,.x-ng-cloak,.ng-hide:not(.ng-hide-animate){display:none !important;}ng\\:form{display:block;}.ng-animate-shim{visibility:hidden;}.ng-anchor{position:absolute;}</style>');
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 require('./angular');
 module.exports = angular;
 
-},{"./angular":14}]},{},[1]);
+},{"./angular":15}]},{},[2]);

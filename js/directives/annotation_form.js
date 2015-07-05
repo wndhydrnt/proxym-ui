@@ -1,9 +1,8 @@
 'use strict';
 
-module.exports = function(proxymApi) {
+module.exports = function(notify, proxymApi) {
   function link(scope, element, attrs) {
     scope.newDomain = "";
-    scope.savedSuccess = false;
 
     scope.addDomain = function() {
       var domainsArray = angular.extend([], scope.annotation.domains);
@@ -11,10 +10,6 @@ module.exports = function(proxymApi) {
       domainsArray.push(scope.newDomain);
       scope.annotation.domains = angular.extend({}, domainsArray);
       scope.newDomain = "";
-    }
-
-    scope.closeSuccess = function() {
-      scope.savedSuccess = false;
     }
 
     scope.deleteDomain = function(idx) {
@@ -33,7 +28,12 @@ module.exports = function(proxymApi) {
       proxymApi.
         createAnnotation(data).
         then(function() {
-          scope.savedSuccess = true;
+          notify({
+            classes: ['alert-success'],
+            duration: 2000,
+            messageTemplate: '<strong>Annotation saved!</strong>',
+            templateUrl: 'templates/annotations/partials/success.html'
+          });
         });
     }
   };
